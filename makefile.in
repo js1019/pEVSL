@@ -1,4 +1,4 @@
-INTEL = 0
+INTEL = 1
 
 # Compilers
 ifeq ($(INTEL), 1)

@@ -230,7 +230,7 @@ void PEVSL_FORT(pevsl_findpol)(double *xintv, double *thresh_int,
   pol->damping = 2;
   pol->thresh_int = *thresh_int;
   pol->thresh_ext = *thresh_ext;
-  pol->max_deg  = 500;
+  pol->max_deg  = 50000;
   pEVSL_FindPol(xintv, pol);
 
   fprintf(stdout, " polynomial deg %d, bar %e gam %e\n",
