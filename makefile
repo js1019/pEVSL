@@ -2,8 +2,8 @@ default:
 	( cd SRC           ; make )
 	( cd EXTERNAL      ; make )
 	( cd TESTS/Lap     ; mkdir -p OUT ; make)
-	( cd TESTS/Gen_Lap ; mkdir -p OUT ; make)
-	( cd TESTS/MM      ; mkdir -p OUT ; make)
+#	( cd TESTS/Gen_Lap ; mkdir -p OUT ; make)
+#	( cd TESTS/MM      ; mkdir -p OUT ; make)
 all:
 	( cd SRC           ; make )
 	( cd EXTERNAL      ; make )
