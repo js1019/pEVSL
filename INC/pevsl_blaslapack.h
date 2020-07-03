@@ -49,6 +49,9 @@ void DHSEQR(char* jobz,char* compz,int* n,int* ilo,int* ihi,double* h,int* ldh,d
 	    double* z,int* ldz,double* work, int* lwork,int* info);
 void ZGESV(int *n, int *nrow, complex double * A, int* m, int* ipiv, complex double *rhs, int* k, int* INFO);
 
+/* add complex Hermitian eigensolver */
+
+
 #endif
 
 /* USE SQRT(DDOT()) INSTEAD OF DNRM2, FOR BETTER PERFORMANCE */

@@ -81,6 +81,7 @@ void PEVSL_FORT(pevsl_setamv)(uintptr_t *pevslf90, void *func, void *data) {
   pEVSL_SetAMatvec(pevsl, (MVFunc) func, data);
 }
 
+
 /** @brief Fortran interface for pEVSL_SetBMatvec
  * @param[in] pevslf90  pevsl pointer
  * @param[in] func  function pointer
@@ -102,6 +103,46 @@ void PEVSL_FORT(pevsl_setbsol)(uintptr_t *pevslf90, void *func, void *data) {
 
   pEVSL_SetBSol(pevsl, (SVFunc) func, data);
 }
+
+
+/**JS 01/20/19 for complex Hermitian Av
+ * @brief Fortran interface for pEVSL_SetAMatvec
+ * @param[in] pevslf90  pevsl pointer
+ * @param[in] func  function pointer
+ * @param[in] data  associated data
+ */
+void PEVSL_FORT(pevsl_setzamv)(uintptr_t *pevslf90, void *func, void *data) {
+
+  /* cast pointer */
+  pevsl_Data *pevsl = (pevsl_Data *) (*pevslf90);
+
+  pEVSL_SetZAMatvec(pevsl, (ZMVFunc) func, data);
+}
+
+/** @brief Fortran interface for pEVSL_SetBMatvec
+ * @param[in] pevslf90  pevsl pointer
+ * @param[in] func  function pointer
+ * @param[in] data  associated data
+ */
+void PEVSL_FORT(pevsl_setzbmv)(uintptr_t *pevslf90, void *func, void *data) {
+
+  /* cast pointer */
+  pevsl_Data *pevsl = (pevsl_Data *) (*pevslf90);
+
+  pEVSL_SetZBMatvec(pevsl, (ZMVFunc) func, data);
+}
+
+/** @brief Fortran interface for SetBsol */
+void PEVSL_FORT(pevsl_setzbsol)(uintptr_t *pevslf90, void *func, void *data) {
+
+  /* cast pointer */
+  pevsl_Data *pevsl = (pevsl_Data *) (*pevslf90);
+
+  pEVSL_SetZBSol(pevsl, (ZSVFunc) func, data);
+}
+
+
+
 
 /** @brief Fortran interface for SetStdEig */
 void PEVSL_FORT(pevsl_set_stdeig)(uintptr_t *pevslf90) {
@@ -182,6 +223,8 @@ void PEVSL_FORT(pevsl_bsv)(uintptr_t *pevslf90, double *b, double *x) {
 }
 
 
+
+
 /** @brief Fortran interface for evsl_lanbounds
  * @param[in] pevslf90 pEVSL pointer
  * @param[in] mlan Krylov dimension
@@ -207,9 +250,45 @@ void PEVSL_FORT(pevsl_lanbounds)(uintptr_t *pevslf90, int *mlan, int *nsteps, do
   pEVSL_ParvecRand(&vinit);
   /*------------------- Lanczos Bounds */
   pEVSL_LanTrbounds(pevsl, *mlan, *nsteps, 1e-8, &vinit, 1, lmin, lmax, NULL);
+  //pEVSL_LanTrbounds(pevsl, *mlan, *nsteps, 1e-8, &vinit, 1, lmin, lmax, stdout);
 
   pEVSL_ParvecFree(&vinit);
 }
+
+
+/** JS 01/20/19  
+ * @brief Fortran interface for evsl_lanbounds
+ * @param[in] pevslf90 pEVSL pointer
+ * @param[in] mlan Krylov dimension
+ * @param[in] nsteps number of steps
+ * @param[in] tol stopping tol
+ * @param[out] lmin lower bound
+ * @param[out] lmax upper bound
+ * */
+void PEVSL_FORT(pevsl_zlanbounds)(uintptr_t *pevslf90, int *mlan, int *nsteps, double *tol,
+                                 double *lmin, double *lmax) {
+  int N, n, nfirst;
+  pevsl_Parvec vrinit, viinit;
+
+  /* cast pointer */
+  pevsl_Data *pevsl = (pevsl_Data *) (*pevslf90);
+
+  N = pevsl->N;
+  n = pevsl->n;
+  nfirst = pevsl->nfirst;
+
+  /*------------------- Create parallel vector: random initial guess */
+  pEVSL_ParvecCreate(N, n, nfirst, pevsl->comm, &vrinit);
+  pEVSL_ParvecRand_split(&vrinit);
+  pEVSL_ParvecCreate(N, n, nfirst, pevsl->comm, &viinit);
+  pEVSL_ParvecRand_split(&viinit);
+  /*------------------- Lanczos Bounds */
+  pEVSL_ZLanTrbounds(pevsl, *mlan, *nsteps, 1e-8, &vrinit, &viinit, 1, lmin, lmax, stdout);
+
+  pEVSL_ParvecFree(&vrinit);
+  pEVSL_ParvecFree(&viinit);
+}
+
 
 /** @brief Fortran interface for find_pol
  * @param[in] xintv  Interval of interest
@@ -291,6 +370,96 @@ void PEVSL_FORT(pevsl_cheblannr)(uintptr_t *pevslf90, double *xintv, int *max_it
   pevsl->evec_computed = Y;
 }
 
+
+/** added by JS 020619 
+ * @brief Fortran interface for ChebLanNr
+ *  the results will be saved in the internal variables
+ */
+void PEVSL_FORT(pevsl_zcheblannr)(uintptr_t *pevslf90, double *xintv, int *max_its, double *tol,
+                                 uintptr_t *polf90) {
+
+  int N, n, nfirst, nev2, ierr;
+  double *lam, *res;
+  pevsl_Parvecs *Yr, *Yi;
+  FILE *fstats = stdout;
+  pevsl_Parvec vrinit, viinit;
+
+  /* cast pointer */
+  pevsl_Data *pevsl = (pevsl_Data *) (*pevslf90);
+
+  N = pevsl->N;
+  n = pevsl->n;
+  nfirst = pevsl->nfirst;
+  /*-------------------- zero out stats */
+  pEVSL_StatsReset(pevsl);
+  /*------------------- Create parallel vector: random initial guess */
+  pEVSL_ParvecCreate(N, n, nfirst, pevsl->comm, &vrinit);
+  pEVSL_ParvecCreate(N, n, nfirst, pevsl->comm, &viinit);
+  pEVSL_ParvecRand(&vrinit);
+  pEVSL_ParvecRand(&viinit);
+  /* cast pointer of pol*/
+  pevsl_Polparams *pol = (pevsl_Polparams *) (*polf90);
+  /* call ChebLanNr */
+  ierr = pEVSL_ZChebLanNr(pevsl, xintv, *max_its, *tol, &vrinit, &viinit, pol, &nev2, &lam, &Yr, &Yi, &res, fstats);
+
+  if (ierr) {
+    printf("ZChebLanNr error %d\n", ierr);
+  }
+
+  pEVSL_ParvecFree(&vrinit);
+  pEVSL_ParvecFree(&viinit);
+  /*--------------------- print stats */
+  pEVSL_StatsPrint(pevsl, fstats);
+
+  if (res) {
+    PEVSL_FREE(res);
+  }
+  /* save pointers to the global variables */
+  pevsl->nev_computed       = nev2;
+  pevsl->eval_computed      = lam;
+  pevsl->evec_computed      = Yr;
+  pevsl->evec_imag_computed = Yi;
+
+}
+
+
+/** JS 051919 for Lanczos vectors 
+ * @brief Fortran interface for ChebLanNr
+ *  the results will be saved in the internal variables
+ */
+void PEVSL_FORT(pevsl_lanvectors)(uintptr_t *pevslf90, double *xintv, int *max_its, double *tol,
+                                  uintptr_t *polf90) {
+  int N, n, nfirst, nev2, ierr;
+  pevsl_Parvecs *Y;
+  FILE *fstats = stdout;
+  pevsl_Parvec vinit;
+
+  /* cast pointer */
+  pevsl_Data *pevsl = (pevsl_Data *) (*pevslf90);
+
+  N = pevsl->N;
+  n = pevsl->n;
+  nfirst = pevsl->nfirst;
+  /*-------------------- zero out stats */
+  pEVSL_StatsReset(pevsl);
+  /*------------------- Create parallel vector: random initial guess */
+  pEVSL_ParvecCreate(N, n, nfirst, pevsl->comm, &vinit);
+  pEVSL_ParvecRand(&vinit);
+  /* cast pointer of pol*/
+  pevsl_Polparams *pol = (pevsl_Polparams *) (*polf90);
+  /* lanvectors.c */
+  ierr = pEVSL_Lanvectors(pevsl, xintv, *max_its, *tol, &vinit, pol, &nev2, &Y, fstats);
+
+  if (ierr) {
+    printf("lanvectors error %d\n", ierr);
+  }
+  /* save pointers to the global variables */
+  pevsl->nev_computed = nev2;
+  pevsl->evec_computed = Y;
+  //printf("lanvectors done %d\n", ierr);
+}
+
+
 /** @brief Get the number of last computed eigenvalues
  */
 void PEVSL_FORT(pevsl_get_nev)(uintptr_t *pevslf90, int *nev) {
@@ -328,6 +497,70 @@ void PEVSL_FORT(pevsl_copy_result)(uintptr_t *pevslf90, double *val, double *vec
   PEVSL_FREE(pevsl->eval_computed);
   pEVSL_ParvecsFree(pevsl->evec_computed);
   PEVSL_FREE(pevsl->evec_computed);
+}
+
+
+/** @brief copy the computed eigenvalues and vectors
+ * @warning after this call the internal saved results will be freed
+ * @param[in, out] pevslf90 Data to be cast to pevsl_Data
+ * @param[in] ld leading dimension of vec [ld >= pevsl.n]
+ * @param[out] vec Lanczos vectors output
+ */
+void PEVSL_FORT(pevsl_copy_vectors)(uintptr_t *pevslf90, double *vec, int *ld) {
+  int i;
+  /* cast pointer */
+  pevsl_Data *pevsl = (pevsl_Data *) (*pevslf90);
+
+
+  /* copy eigenvectors */
+  for (i=0; i<pevsl->nev_computed; i++) {
+    double *dest = vec + i * (*ld);
+    double *src = pevsl->evec_computed->data + i * pevsl->evec_computed->ld;
+    memcpy(dest, src, pevsl->n*sizeof(double));
+  }
+
+  /* reset pointers */
+  pevsl->nev_computed = 0;
+  pEVSL_ParvecsFree(pevsl->evec_computed);
+  PEVSL_FREE(pevsl->evec_computed);
+}
+
+
+
+/* added JS 020619 for complex Hermitian 
+ * @brief copy the computed eigenvalues and vectors
+ * @warning after this call the internal saved results will be freed
+ * @param[in, out] pevslf90 Data to be cast to pevsl_Data
+ * @param[in] ld leading dimension of vec [ld >= pevsl.n]
+ * @param[out] val Eigenvalue output
+ * @param[out] vecr, veci Eigenvector output
+ */
+void PEVSL_FORT(pevsl_copy_zresult)(uintptr_t *pevslf90, double *val, double *vecr, double *veci, int *ld) {
+
+  int i;
+  /* cast pointer */
+  pevsl_Data *pevsl = (pevsl_Data *) (*pevslf90);
+  /* copy eigenvalues */
+  memcpy(val, pevsl->eval_computed, pevsl->nev_computed*sizeof(double));
+
+  /* copy eigenvectors */
+  for (i=0; i<pevsl->nev_computed; i++) {
+    double *destr = vecr + i * (*ld);
+    double *srcr  = pevsl->evec_computed->data + i * pevsl->evec_computed->ld;
+    memcpy(destr, srcr, pevsl->n*sizeof(double));
+    double *desti = veci + i * (*ld);
+    double *srci  = pevsl->evec_imag_computed->data + i*pevsl->evec_imag_computed->ld;
+    memcpy(desti, srci, pevsl->n*sizeof(double));
+  }
+
+  /* reset pointers */
+  pevsl->nev_computed = 0;
+  PEVSL_FREE(pevsl->eval_computed);
+  pEVSL_ParvecsFree(pevsl->evec_computed);
+  PEVSL_FREE(pevsl->evec_computed);
+
+  pEVSL_ParvecsFree(pevsl->evec_imag_computed);
+  PEVSL_FREE(pevsl->evec_imag_computed);
 }
 
 void PEVSL_FORT(pevsl_setup_chebiter)(double *lmin, double *lmax, int *deg,

@@ -7,8 +7,9 @@ else
   #include DIRECTSOL/makefile_mumps.in
   #OBJ = DIRECTSOL/pevsl_mumps.o ITERSOL/chebiter.o
   #INCLUDES = -I../INC -I. $(MUMPS_INC)
+  #include DIRECTSOL/makefile_mumps.in
   OBJ = ITERSOL/chebiter.o
-  INCLUDES = -I../INC -I.
+  INCLUDES = -I../INC -I. 
 endif
 
 %.o : %.c

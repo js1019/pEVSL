@@ -138,6 +138,8 @@ int pEVSL_SetProbSizes(pevsl_Data *pevsl_data, int N, int n, int nfirst) {
   return 0;
 }
 
+
+
 /**
  * @brief Set the user-input matvec routine and the associated data for A.
  * Save them in pevsl_data
@@ -191,6 +193,66 @@ int pEVSL_SetBSol(pevsl_Data *pevsl_data, SVFunc func, void *data) {
 
   return 0;
 }
+
+
+/** JS 01/20/19 for complex Hermitian cases
+ * @brief Set the user-input matvec routine and the associated data for A.
+ * Save them in pevsl_data
+ * @param[in, out] pevsl_data pEVSL data struct
+ * @param[in] func Matrix vector function
+ * @param[in] data data required for matvec
+ * */
+int pEVSL_SetZAMatvec(pevsl_Data *pevsl_data, ZMVFunc func, void *data) {
+
+  /*if (!pevsl_data->ZAmv) {
+    PEVSL_CALLOC(pevsl_data->ZAmv, 1, pevsl_ZMatvec);
+  }*/
+  PEVSL_CALLOC(pevsl_data->ZAmv, 1, pevsl_ZMatvec);
+  pevsl_data->ZAmv->func = func;
+  pevsl_data->ZAmv->data = data;
+
+  return 0;
+}
+
+
+/**
+ * @brief Set the user-input matvec routine and the associated data for B.
+ * Save them in pevsl_data
+ * @param[in, out] pevsl_data pEVSL data struct
+ * @param[in] func Matrix vector function
+ * @param[in] data data required for matvec
+ * */
+int pEVSL_SetZBMatvec(pevsl_Data *pevsl_data, ZMVFunc func, void *data) {
+
+  /*if (!pevsl_data->ZBmv) {
+    PEVSL_CALLOC(pevsl_data->ZBmv, 1, pevsl_ZMatvec);
+  }*/
+  PEVSL_CALLOC(pevsl_data->ZBmv, 1, pevsl_ZMatvec);
+  pevsl_data->ZBmv->func = func;
+  pevsl_data->ZBmv->data = data;
+
+  return 0;
+}
+
+
+/**
+ * @brief Set the solve routine and the associated data for B
+ * @param[in, out] pevsl_data pEVSL data structure
+ * @param[in] func Function for BSol
+ * @param[in] data Data required for func
+ * */
+int pEVSL_SetZBSol(pevsl_Data *pevsl_data, ZSVFunc func, void *data) {
+
+  /*if (!pevsl_data->ZBsol) {
+    PEVSL_CALLOC(pevsl_data->ZBsol, 1, pevsl_ZBsol);
+  }*/
+  PEVSL_CALLOC(pevsl_data->ZBsol, 1, pevsl_ZBsol);
+  pevsl_data->ZBsol->func = func;
+  pevsl_data->ZBsol->data = data;
+
+  return 0;
+}
+
 
 /**
  * @brief Set the solve routine and the associated data for LT

@@ -239,6 +239,70 @@ void CGS_DGKS(pevsl_Data *pevsl,
   pevsl->stats->t_reorth += tme - tms;
 }
 
+
+/** JS 01/03/19 for complex cases
+ * @brief Classical GS reortho with Daniel, Gragg, Kaufman, Stewart test
+ * @param[in, out] pevsl pEVSL data struct (time is updated)
+ * @param[in] k Number of vectors
+ * @param[in] i_max Number iterations
+ * @param[in] Q matrix
+ * @param[out] nrmv norm of v
+ * @param[in, out] v Input
+ * @param[out] w Work vector
+ **/
+void CGS_ZDGKS(pevsl_Data *pevsl, int k, int i_max, 
+              pevsl_Parvecs *Qr, pevsl_Parvecs *Qi, 
+              pevsl_Parvec  *vr, pevsl_Parvec  *vi,
+              double *nrmv, double *wr, double *wi) {
+
+
+  double tms = pEVSL_Wtime();
+
+  double *w0, *w1;
+  double eta = 1.0 / sqrt(2.0);
+  double old_nrm, new_nrm;
+  int i;
+
+  int one = 1; 
+  double done = 1.0, dnone = -1.0;
+  w0 = wr; 
+  w1 = wi;
+
+  
+  pEVSL_ParvecZNrm2(vr, vi, &old_nrm);
+
+  for (i=0; i<i_max; i++) {
+    pEVSL_ParvecsGemtvWithWspace(1.0, Qr, k, vr, 0.0, wr, wr+k);
+    pEVSL_ParvecsGemtvWithWspace(1.0, Qi, k, vi, 0.0, w0, w0+k);
+    DAXPY(&k, &done, w0, &one, wr, &one);   
+ 
+    pEVSL_ParvecsGemtvWithWspace(1.0, Qr, k, vi, 0.0, wi, wi+k);
+    pEVSL_ParvecsGemtvWithWspace(1.0, Qi, k, vr, 0.0, w1, w1+k);
+    DAXPY(&k, &dnone, w1, &one, wi, &one);   
+    
+    pEVSL_ParvecsGemv(-1.0, Qr, k, wr, 1.0, vr);
+    pEVSL_ParvecsGemv( 1.0, Qi, k, wi, 1.0, vr);
+
+    pEVSL_ParvecsGemv(-1.0, Qi, k, wr, 1.0, vi);
+    pEVSL_ParvecsGemv(-1.0, Qr, k, wi, 1.0, vi);
+
+    pEVSL_ParvecZNrm2(vr, vi, &new_nrm);
+    if (new_nrm > eta * old_nrm) {
+      break;
+    }
+    old_nrm = new_nrm;
+  }
+
+  if (nrmv) {
+    *nrmv = new_nrm;
+  }
+
+  double tme = pEVSL_Wtime();
+  pevsl->stats->t_reorth += tme - tms;
+  
+}
+
+
 /**
  * @brief Modified GS reortho. No test. just do i_max times
  * used in generalized ev problems
@@ -260,5 +324,52 @@ void CGS_DGKS2(pevsl_Data *pevsl,
 
   double tme = pEVSL_Wtime();
   pevsl->stats->t_reorth += tme - tms;
+}
+
+/** JS 01/03/19 
+ * @brief Modified GS reortho. for complex vectors
+ * No test. just do i_max times
+ * used in generalized ev problems
+ * vnew = v - (v, z_j)*v_j, for j=1,2,...
+ **/
+void CGS_ZDGKS2(pevsl_Data *pevsl, int k, int i_max, 
+         pevsl_Parvecs *Vr, pevsl_Parvecs *Vi, pevsl_Parvecs *Zr, pevsl_Parvecs *Zi, 
+         pevsl_Parvec  *vr, pevsl_Parvec  *vi, double *wr, double *wi) {
+
+  double tms = pEVSL_Wtime();
+  double *w0, *w1;
+
+  int one = 1; 
+  double done = 1.0, dnone = -1.0;
+  w0 = wr + i_max*k; 
+  w1 = wi + i_max*k;
+
+  int i;
+  for (i=0; i<i_max; i++) {
+    /* w = Z^H * v */
+    pEVSL_ParvecsGemtvWithWspace(1.0, Zr, k, vr, 0.0, wr, wr+k);
+    pEVSL_ParvecsGemtvWithWspace(1.0, Zi, k, vi, 0.0, w0, w0+k);
+    /* *wr = *w0 + *w1; */ 
+    DAXPY(&k, &done, w0, &one, wr, &one); 
+
+    pEVSL_ParvecsGemtvWithWspace(1.0, Zr, k, vi, 0.0, wi, wi+k);
+    pEVSL_ParvecsGemtvWithWspace(1.0, Zi, k, vr, 0.0, w1, w1+k);
+    /* *wi =  *wi - *w1; */
+    DAXPY(&k, &dnone, w1, &one, wi, &one);  
+
+    /* v = v - V *w no complex conjugate? */
+    pEVSL_ParvecsGemv(-1.0, Vr, k, wr, 1.0, vr);
+    pEVSL_ParvecsGemv( 1.0, Vi, k, wi, 1.0, vr);
+
+    pEVSL_ParvecsGemv(-1.0, Vr, k, wi, 1.0, vi);
+    pEVSL_ParvecsGemv(-1.0, Vi, k, wr, 1.0, vi);
+
+  }
+
+
+  double tme = pEVSL_Wtime();
+  pevsl->stats->t_reorth += tme - tms;
+  
+
 }
 

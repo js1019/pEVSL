@@ -573,3 +573,102 @@ int pEVSL_ChebAv(pevsl_Data      *pevsl,
   return 0;
 }
 
+/** JS 020619 for complex Hermitian 
+ * @brief @b Computes y=P(A) v, where pn is a Cheb. polynomial expansion
+ *
+ * @param[in] pevsl Struct containing pevsl data
+ * @param[in] pol Struct containing the paramenters and expansion coefficient of
+ * the polynomail.
+ * @param[in] vr, vi input vector
+ *
+ * @param[out] yr, yi p(A)v
+ *
+ * @b Workspace
+ * @param[in, out] wr, wi Work vector of length 3*n [allocate before call]
+ * @param[in, out] vr, vi is untouched
+ **/
+int pEVSL_ZChebAv(pevsl_Data      *pevsl,
+                  pevsl_Polparams *pol,
+                  pevsl_Parvec    *vr, pevsl_Parvec *vi, 
+                  pevsl_Parvec    *yr, pevsl_Parvec *yi,
+                  pevsl_Parvec    *wr, pevsl_Parvec *wi) {
+
+  double tt = pEVSL_Wtime();
+  /*-------------------- unpack pol */
+  double *mu = pol->mu;
+  double dd = pol->dd;
+  double cc = pol->cc;
+  int m = pol->deg;
+
+  /*-------------------- pointers to v_[k-1],v_[k], v_[k+1] from w */
+  pevsl_Parvec *vkr   = wr;
+  pevsl_Parvec *vkp1r = wr + 1;
+  pevsl_Parvec *vkm1r = wr + 2;
+  pevsl_Parvec *w2r = pevsl->ifGenEv ? wr + 3 : NULL;
+  pevsl_Parvec *vki   = wi;
+  pevsl_Parvec *vkp1i = wi + 1;
+  pevsl_Parvec *vkm1i = wi + 2;
+  pevsl_Parvec *w2i = pevsl->ifGenEv ? wi + 3 : NULL;
+
+  /*-------------------- */
+  int k;
+  double t, s, t1= 1.0 / dd, t2 = 2.0 / dd;
+  pevsl_Parvec *tmpr, *tmpi;
+
+  /*-------------------- vk <- v; vkm1 <- zeros(n,1) */
+  pEVSL_ParvecCopy(vr, vkr);
+  pEVSL_ParvecCopy(vi, vki);
+  /*-------------------- special case: k == 0 */
+  s = mu[0];
+  pEVSL_ParvecCopy(vkr, yr);
+  pEVSL_ParvecCopy(vki, yi);
+  pEVSL_ParvecScal(yr, s);
+  pEVSL_ParvecScal(yi, s);
+
+  /*-------------------- degree loop. k IS the degree */
+  for (k=1; k<=m; k++) {
+    /*-------------------- y = mu[k]*Vk + y */
+    t = k == 1 ? t1 : t2;
+    /*-------------------- */
+    s = mu[k];
+    if (pevsl->ifGenEv) {
+      /*-------------------- Vkp1 = A*B\Vk - cc*Vk */
+      pEVSL_ZSolveB( pevsl, vkr, vki, w2r, w2i);
+      pEVSL_ZMatvecA(pevsl, w2r, w2i, vkp1r, vkp1i);
+    } else {
+      /*-------------------- Vkp1 = A*Vk - cc*Vk */
+      pEVSL_ZMatvecA(pevsl, vkr, vki, vkp1r, vkp1i);
+      pEVSL_ZMatvecA(pevsl, vkr, vki, vkp1r, vkp1i);
+    }
+
+    double ts = pEVSL_Wtime();
+    pEVSL_ParvecAxpy(-cc, vkr, vkp1r);
+    pEVSL_ParvecAxpy(-cc, vki, vkp1i);
+
+    pEVSL_ParvecScal(vkp1r, t);
+    pEVSL_ParvecScal(vkp1i, t);
+
+    if (k > 1) {
+      pEVSL_ParvecAxpy(-1.0, vkm1r, vkp1r);
+      pEVSL_ParvecAxpy(-1.0, vkm1i, vkp1i);
+    }
+    pEVSL_ParvecAxpy(s, vkp1r, yr);
+    pEVSL_ParvecAxpy(s, vkp1i, yi);
+    
+    pevsl->stats->t_sth += pEVSL_Wtime() - ts;
+    /*-------------------- next: rotate vectors via pointer exchange */
+    tmpr  = vkm1r;
+    vkm1r = vkr;
+    vkr   = vkp1r;
+    vkp1r = tmpr;
+
+    tmpi  = vkm1i;
+    vkm1i = vki;
+    vki   = vkp1i;
+    vkp1i = tmpi;
+  }
+
+  pevsl->stats->n_polAv ++;
+  pevsl->stats->t_polAv += pEVSL_Wtime() - tt;
+  return 0;
+}

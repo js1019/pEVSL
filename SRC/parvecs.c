@@ -100,6 +100,8 @@ void pEVSL_ParvecsGemv(double alp, pevsl_Parvecs *A, int nvecs, double *x,
   DGEMV(&cN, &A->n_local, &nvecs, &alp, A->data, &A->ld, x, &one, &bet,
         y->data, &one);
 }
+
+
 /*!
  * @brief Perform GEMV with the transpose of a Parvecs and a Parvec
  * y = alp * A(:,0:nvecs-1)^T * x + bet * y

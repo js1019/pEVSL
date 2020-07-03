@@ -49,6 +49,20 @@ void pEVSL_ParvecDupl(pevsl_Parvec *x, pevsl_Parvec *y) {
   pEVSL_ParvecCreate(x->n_global, x->n_local, x->n_first, x->comm, y);
 }
 
+/*! JS 01/02/19 create x*H change the imag part xi to -xi
+ * @param[xi] xi Input vector 
+ * @param[xiH] xi^H Output vector 
+ */
+void pEVSL_ParvecCreateH(pevsl_Parvec *xi, pevsl_Parvec *xiH) {
+
+  pEVSL_ParvecDupl(xi, xiH); 
+
+  int i;
+  for (i=0; i<xi->n_local; i++) {
+    xiH->data[i] = - xi->data[i];
+  }
+}
+
 /*!
  * @brief Destroy a Parvec struct
  */
@@ -68,6 +82,20 @@ void pEVSL_ParvecRand(pevsl_Parvec *x) {
   for (i=0; i<x->n_local; i++) {
     double z = (rand() - t) / t;
     x->data[i] = z;
+  }
+}
+
+/* JS to split vector initialization
+ * @brief generate a random parallel vector, each element in [-1,1]
+ * @param[in,out] x Vector
+ */
+void pEVSL_ParvecRand_split(pevsl_Parvec *x) {
+  int i;
+  double t = ((double) RAND_MAX) / 2.0;
+  for (i=0; i<x->n_local/2; i++) {
+    double z = (rand() - t) / t;
+    x->data[i] = z;
+    x->data[x->n_local/2+i] = z;
   }
 }
 
@@ -130,6 +158,41 @@ void pEVSL_ParvecDot(pevsl_Parvec *x, pevsl_Parvec *y, double *t) {
   MPI_Allreduce(&tlocal, t, 1, MPI_DOUBLE, MPI_SUM, x->comm);
 }
 
+/** JS 12/26/18 
+ * computes x^H * y = tr + ti * i
+ * @brief Parallel complex dot product
+ * @param[in] xr, xi Input vector
+ * @param[in] yr, yi Input vector
+ * @param[out] tr, ti dot product
+ *
+ */
+void pEVSL_ParvecZDot(pevsl_Parvec *xr, pevsl_Parvec *xi, pevsl_Parvec *yr, 
+                      pevsl_Parvec *yi, double *tr, double *ti) {
+  PEVSL_CHKERR(xr->n_global != yr->n_global);
+  PEVSL_CHKERR(xr->n_local  != yr->n_local);
+  PEVSL_CHKERR(xr->n_first  != yr->n_first);
+  PEVSL_CHKERR(xi->n_global != yi->n_global);
+  PEVSL_CHKERR(xi->n_local  != yi->n_local);
+  PEVSL_CHKERR(xi->n_first  != yi->n_first);
+  double tlocal0,tlocal1,t0,t1;
+  /* make x complex conjugate*/
+  /*pevsl_Parvec *xiH;
+  pEVSL_ParvecCreateH(xi,xiH); 
+  */
+
+  int one = 1;
+  tlocal0 = DDOT(&(xr->n_local), xr->data, &one, yr->data, &one);
+  tlocal1 = DDOT(&(xi->n_local), xi->data, &one, yi->data, &one);
+  t0 = tlocal0 + tlocal1;
+  MPI_Allreduce(&t0, tr, 1, MPI_DOUBLE, MPI_SUM, xr->comm);
+  tlocal0 = DDOT(&(xr->n_local), xr->data, &one, yi->data, &one);
+  tlocal1 = DDOT(&(xi->n_local), xi->data, &one, yr->data, &one);
+  t1 = tlocal0 - tlocal1;
+  MPI_Allreduce(&t1, ti, 1, MPI_DOUBLE, MPI_SUM, xr->comm);
+  /* pEVSL_ParvecFree(xiH); */
+}
+
+
 /**
  * @brief Euclidean norm
  * @param[in] x Input vector
@@ -141,6 +204,24 @@ void pEVSL_ParvecNrm2(pevsl_Parvec *x, double *t) {
   *t = sqrt(t2);
 }
 
+/** JS 12/26/18 
+ * @brief Euclidean norm
+ * @param[in] xr, xi Input vector
+ * @param[out] t Euclidean norm
+ * */
+void pEVSL_ParvecZNrm2(pevsl_Parvec *xr, pevsl_Parvec *xi, double *t) {
+  double t1, t2;
+
+  /* pevsl_Parvec *xiH;   
+  pEVSL_ParvecCreateH(xi,xiH); */ 
+
+  pEVSL_ParvecZDot(xr, xi, xr, xi, &t1, &t2);
+  *t = sqrt(t1);
+
+  /* pEVSL_ParvecFree(xiH); */
+}
+
+
 // y := x
 /**
  * @brief Copies x to y
@@ -149,8 +230,8 @@ void pEVSL_ParvecNrm2(pevsl_Parvec *x, double *t) {
  */
 void pEVSL_ParvecCopy(pevsl_Parvec *x, pevsl_Parvec *y) {
   PEVSL_CHKERR(x->n_global != y->n_global);
-  PEVSL_CHKERR(x->n_local != y->n_local);
-  PEVSL_CHKERR(x->n_first != y->n_first);
+  PEVSL_CHKERR(x->n_local  != y->n_local);
+  PEVSL_CHKERR(x->n_first  != y->n_first);
   int one = 1;
   DCOPY(&(x->n_local), x->data, &one, y->data, &one);
 }

@@ -1,5 +1,5 @@
 /*
-  This file contains function prototypes and constant definitions for EVSL
+  This file contains function prototypes and constant definitions for pEVSL
 */
 
 #ifndef PEVSL_H
@@ -28,6 +28,10 @@ void pEVSL_SpslicerLan(double* xi, double* yi, int n_int, int npts, double* sli)
 int pEVSL_LanTrbounds(pevsl_Data *pevsl, int lanm, int maxit, double tol, 
                       pevsl_Parvec *vinit, int bndtype, double *lammin, 
                       double *lammax, FILE *fstats);
+/* add JS 010219 complex lantrbnd */
+int pEVSL_ZLanTrbounds(pevsl_Data *pevsl, int lanm, int maxit, double tol,
+                       pevsl_Parvec *vrinit, pevsl_Parvec *viinit, int bndtype,
+                       double *lammin, double *lammax, FILE *fstats);
 /* lspolapprox.c */
 void pEVSL_SetupLSPolSqrt(int max_deg, double tol, double lmin, double lmax, 
                           pevsl_Parcsr *B, void **vdata);
@@ -49,6 +53,10 @@ int pEVSL_SetLTSol    (pevsl_Data *pevsl_data, SVFunc func, void *data);
 int pEVSL_SetStdEig   (pevsl_Data *pevsl_data);
 int pEVSL_SetGenEig   (pevsl_Data *pevsl_data);
 int pEVSL_SetSigmaMult(pevsl_Data *pevsl_data, double mult);
+/* add JS 01/20/19 complex mat-vec*/
+int pEVSL_SetZAMatvec  (pevsl_Data *pevsl_data, ZMVFunc func, void *data);
+int pEVSL_SetZBMatvec  (pevsl_Data *pevsl_data, ZMVFunc func, void *data);
+int pEVSL_SetZBSol     (pevsl_Data *pevsl_data, ZSVFunc func, void *data);
 
 /* parcsr.c */
 int  pEVSL_ParcsrCreate(int nrow, int ncol, int *row_starts, int *col_starts, 
@@ -75,6 +83,13 @@ void pEVSL_ParvecNrm2(pevsl_Parvec *x, double *t);
 void pEVSL_ParvecCopy(pevsl_Parvec *x, pevsl_Parvec *y);
 void pEVSL_ParvecSum(pevsl_Parvec *x, double *t);
 void pEVSL_ParvecScal(pevsl_Parvec *x, double t);
+/*add JS 01/02/19 */
+void pEVSL_ParvecZNrm2(pevsl_Parvec *xr, pevsl_Parvec *xi, double *t);
+void pEVSL_ParvecZDot(pevsl_Parvec *xr, pevsl_Parvec *xi, pevsl_Parvec *yr, 
+                      pevsl_Parvec *yi, double *tr, double *ti); 
+void pEVSL_ParvecRand_split(pevsl_Parvec *x); 
+
+
 /* void pEVSL_ParvecAddScalar(pevsl_Parvec *x, double t); */
 void pEVSL_ParvecSetScalar(pevsl_Parvec *x, double t);
 void pEVSL_ParvecSetZero(pevsl_Parvec *x);
@@ -140,6 +155,19 @@ void pEVSL_StatsPrint(pevsl_Data *pevsl, FILE *fstats);
 int pEVSL_ChebLanNr(pevsl_Data *pevsl, double *intv, int maxit, double tol, pevsl_Parvec *vinit, 
                     pevsl_Polparams *pol, int *nevOut, double **lamo, pevsl_Parvecs **Wo, 
                     double **reso, FILE *fstats);
+
+/* add JS 020619 for complex Hermitian cases*/
+int pEVSL_ZChebLanNr(pevsl_Data *pevsl, double *intv, int maxit, double tol,
+                     pevsl_Parvec *vrinit, pevsl_Parvec *viinit, pevsl_Polparams *pol, int *nevOut,
+                     double **lamo, pevsl_Parvecs **Wor, pevsl_Parvecs **Woi, 
+                     double **reso, FILE *fstats);
+
+
+/* add JS 051919 for lanczos vectors */
+/* lanvectors.c */
+int pEVSL_Lanvectors(pevsl_Data *pevsl, double *intv, int maxit, double tol,
+                     pevsl_Parvec *vinit, pevsl_Polparams *pol, int *nevOut,
+                     pevsl_Parvecs **Wo, FILE *fstats); 
 
 #endif
 

@@ -12,7 +12,8 @@ LINK = $(CC)
 # Common flags
 # Debug mode
 PEVSL_DEBUG = -DPEVSL_DEBUG
-FLAGS = -DUNIX -O3 -g -Wall $(PEVSL_DEBUG) $(TIMING)
+#FLAGS = -DUNIX -O3 -g -Wall $(PEVSL_DEBUG) $(TIMING)
+FLAGS = -DUNIX -g -Wall $(PEVSL_DEBUG) $(TIMING)
 
 ##OBJ_TIME = mactime.o
 OBJ_TIME = timing.o 
@@ -25,6 +26,7 @@ ifeq ($(INTEL), 1)
 FLAGS += -DUSE_MKL
 LIBLAPACK =  -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -liomp5 -lpthread -lm -ldl
 else
-LIBLAPACK = /home/li50/workspace/OpenBLAS/libopenblas.a -lpthread
-LIB0 = -lgfortran -lm
+#LIBLAPACK = /home/li50/workspace/OpenBLAS/libopenblas.a -lpthread
+LIBLAPACK =  -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lgomp -lpthread -lm -ldl
+LIB0 = -lgfortran #-lm
 endif
