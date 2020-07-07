@@ -249,7 +249,8 @@ void PEVSL_FORT(pevsl_lanbounds)(uintptr_t *pevslf90, int *mlan, int *nsteps, do
   pEVSL_ParvecCreate(N, n, nfirst, pevsl->comm, &vinit);
   pEVSL_ParvecRand(&vinit);
   /*------------------- Lanczos Bounds */
-  pEVSL_LanTrbounds(pevsl, *mlan, *nsteps, 1e-8, &vinit, 1, lmin, lmax, NULL);
+  //pEVSL_LanTrbounds(pevsl, *mlan, *nsteps, 1e-8, &vinit, 1, lmin, lmax, NULL);
+  pEVSL_LanTrbounds(pevsl, *mlan, *nsteps, *tol, &vinit, 1, lmin, lmax, NULL);
   //pEVSL_LanTrbounds(pevsl, *mlan, *nsteps, 1e-8, &vinit, 1, lmin, lmax, stdout);
 
   pEVSL_ParvecFree(&vinit);

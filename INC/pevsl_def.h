@@ -15,7 +15,7 @@
 #define PEVSL_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define PEVSL_MIN(a, b) ((a) < (b) ? (a) : (b))
 
-#define orthTol 1e-14
+#define orthTol 1e-18
 
 #define PI M_PI
 
